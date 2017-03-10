@@ -3,6 +3,7 @@
 # External dependencies
 # 
 
+find_package(dlib)
 
 # Enable automoc
 set(CMAKE_AUTOMOC ON)
@@ -83,6 +84,7 @@ target_link_libraries(${target}
     PRIVATE
     ${DEFAULT_LIBRARIES}
     annotator::annotatorplugin
+    dlib::dlib_shared
 )
 
 

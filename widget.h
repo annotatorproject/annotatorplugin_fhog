@@ -1,11 +1,17 @@
 #ifndef WIDGET_H
 #define WIDGET_H
 
-#include <QWidget>
 #include <QPixmap>
+#include <QWidget>
 
 namespace Ui {
 class Widget;
+}
+
+namespace Annotator {
+namespace Plugins {
+class FHOG;
+}
 }
 
 class Widget : public QWidget {
@@ -15,11 +21,16 @@ class Widget : public QWidget {
   explicit Widget(QWidget *parent = 0);
   ~Widget();
   void setObjectPixmap(QPixmap pixmap);
+  void setFHOG(Annotator::Plugins::FHOG *fhog);
+  void setProgress(int percent);
 
  private slots:
 
+  void on_trainButton_clicked();
+
  private:
   Ui::Widget *ui;
+  Annotator::Plugins::FHOG *fhog;
 };
 
 #endif  // WIDGET_H

@@ -14,33 +14,46 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="1" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>FHOG</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0">
-    <widget class="QPushButton" name="pushButton">
+   <item row="3" column="2">
+    <widget class="QPushButton" name="trainButton">
      <property name="text">
       <string>Train</string>
      </property>
     </widget>
    </item>
    <item row="3" column="0">
+    <widget class="QLabel" name="objectPixmap">
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="2">
     <widget class="QProgressBar" name="progressBar">
      <property name="value">
       <number>24</number>
      </property>
     </widget>
    </item>
-   <item row="0" column="0">
-    <widget class="QLabel" name="objectPixmap">
+   <item row="0" column="2">
+    <widget class="QLabel" name="label">
      <property name="text">
-      <string/>
+      <string>FHOG</string>
      </property>
     </widget>
+   </item>
+   <item row="3" column="1">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>40</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
    </item>
   </layout>
  </widget>

@@ -1,3 +1,5 @@
+
+// source: http://dlib.net/fhog_object_detector_ex.cpp.html
 #include "fhog.h"
 #include "widget.h"
 
@@ -6,15 +8,26 @@
 #include <AnnotatorLib/Frame.h>
 #include <AnnotatorLib/Session.h>
 
+#include <dlib/data_io.h>
+#include <dlib/gui_widgets.h>
+#include <dlib/image_processing.h>
+#include <dlib/opencv/cv_image.h>
+#include <dlib/svm_threaded.h>
+
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <ctype.h>
 #include <iostream>
 
+#include <chrono>
+#include <thread>
+
 using namespace Annotator::Plugins;
 
 Annotator::Plugins::FHOG::FHOG() {
+  widget.setFHOG(this);
+  initScanner();
 }
 
 FHOG::~FHOG() {}
@@ -40,40 +53,89 @@ void FHOG::setObject(shared_ptr<Object> object) {
 
 shared_ptr<Object> FHOG::getObject() const { return object; }
 
-void FHOG::setLastAnnotation(shared_ptr<Annotation> /*annotation*/)
-{
-
-}
+void FHOG::setLastAnnotation(shared_ptr<Annotation> /*annotation*/) {}
 
 std::vector<shared_ptr<Commands::Command>> FHOG::getCommands() {
   std::vector<shared_ptr<Commands::Command>> commands;
   return commands;
 }
 
-cv::Rect FHOG::findObject() {
-  return cv::Rect();
+void FHOG::train() {
+  if (!object) return;
+  widget.setProgress(10);
+  getImagesTrain();
+  widget.setProgress(20);
+  // upsampleImages();
+  widget.setProgress(30);
+
+  dlib::structural_object_detection_trainer<image_scanner_type> trainer(
+      scanner);
+  trainer.set_num_threads(4);
+  // The trainer is a kind of support vector machine and therefore has the usual
+  // SVM
+  // C parameter.  In general, a bigger C encourages it to fit the training data
+  // better but might lead to overfitting.  You must find the best C value
+  // empirically by checking how well the trained detector works on a test set
+  // of
+  // images you haven't trained on.  Don't just leave the value set at 1.  Try a
+  // few
+  // different C values and see what works best for your data.
+  trainer.set_c(1);
+  trainer.be_verbose();
+  trainer.set_epsilon(0.01);
+
+  dlib::image_window win;
+  for (unsigned long i = 0; i < images_train.size(); ++i) {
+    // Run the detector and get the face detections.
+    std::vector<dlib::rectangle> dets = boxes_train[i];
+    win.clear_overlay();
+    win.set_image(images_train[i]);
+    win.add_overlay(dets, dlib::rgb_pixel(255, 0, 0));
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+  }
+
+  widget.setProgress(40);
+  detector = trainer.train(images_train, boxes_train);
+  widget.setProgress(50);
+  widget.setProgress(0);
 }
 
-QPixmap FHOG::getImgCrop(
-    shared_ptr<AnnotatorLib::Annotation> annotation, int size) const {
-    if(annotation == nullptr)
-        return QPixmap();
-  cv::Mat tmp = project->getImageSet()->getImage(
-      annotation->getFrame()->getFrameNumber());
+void FHOG::getImagesTrain() {
+  assert(object);
+  this->images_train.clear();
+  this->boxes_train.clear();
+  this->object->getAnnotations();
 
-  float x = std::max(annotation->getX(), 0.f);
-  float y = std::max(annotation->getY(), 0.f);
-  float w = std::min(annotation->getWidth(), tmp.cols - x);
-  float h = std::min(annotation->getHeight(), tmp.rows - y);
-
-  cv::Rect rect(x, y, w, h);
-
-  cv::Mat cropped;
-  try {
-    tmp(rect).copyTo(cropped);
-  } catch (cv::Exception &e) {
-    std::cout << e.what();
+  for (auto annotation : this->object->getAnnotations()) {
+    std::shared_ptr<AnnotatorLib::Annotation> a = annotation.second.lock();
+    cv::Mat image =
+        project->getImageSet()->getImage(a->getFrame()->getFrameNumber());
+    cv::Mat imageGray;
+    cv::cvtColor(image, imageGray, CV_BGR2GRAY);
+    dlib::array2d<unsigned char> dlibImageGray;
+    dlib::assign_image(dlibImageGray, dlib::cv_image<unsigned char>(imageGray));
+    this->images_train.push_back(dlibImageGray);
+    std::vector<dlib::rectangle> rects;
+    dlib::rectangle rect((long)a->getX(), (long)a->getY(),
+                         (long)a->getX() + (long)a->getWidth(),
+                         (long)a->getY() + long(a->getHeight()));
+    rects.push_back(rect);
+    this->boxes_train.push_back(rects);
   }
+}
+
+void FHOG::upsampleImages() {
+  dlib::upsample_image_dataset<dlib::pyramid_down<2>>(images_train,
+                                                      boxes_train);
+}
+
+cv::Rect FHOG::findObject() { return cv::Rect(); }
+
+QPixmap FHOG::getImgCrop(shared_ptr<AnnotatorLib::Annotation> annotation,
+                         int size) const {
+  if (annotation == nullptr) return QPixmap();
+
+  cv::Mat cropped = getImg(annotation);
 
   cropped.convertTo(cropped, CV_8U);
   cv::cvtColor(cropped, cropped, CV_BGR2RGB);
@@ -85,3 +147,24 @@ QPixmap FHOG::getImgCrop(
   pim = pim.scaledToHeight(size);
   return pim;
 }
+
+cv::Mat FHOG::getImg(shared_ptr<Annotation> annotation) const {
+  cv::Mat tmp = project->getImageSet()->getImage(
+      annotation->getFrame()->getFrameNumber());
+
+  float x = std::max(annotation->getX(), 0.f);
+  float y = std::max(annotation->getY(), 0.f);
+  float w = std::min(annotation->getWidth(), tmp.cols - x);
+  float h = std::min(annotation->getHeight(), tmp.rows - y);
+
+  cv::Rect rect(x, y, w, h);
+  cv::Mat cropped;
+  try {
+    tmp(rect).copyTo(cropped);
+  } catch (cv::Exception &e) {
+    std::cout << e.what();
+  }
+  return cropped;
+}
+
+void FHOG::initScanner() { scanner.set_detection_window_size(80, 80); }

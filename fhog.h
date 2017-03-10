@@ -4,11 +4,15 @@
 #include <annotator/plugins/plugin.h>
 #include "widget.h"
 
+#include <dlib/data_io.h>
+#include <dlib/image_processing.h>
+#include <dlib/svm_threaded.h>
 #include <QtCore/QObject>
 #include <QtCore/QtPlugin>
 #include <QtGui/QIcon>
 #include <memory>
 #include <opencv2/core/mat.hpp>
+#include <vector>
 
 using std::shared_ptr;
 using namespace AnnotatorLib;
@@ -36,8 +40,16 @@ class FHOG : public Plugin {
   void setLastAnnotation(shared_ptr<Annotation>) override;
   std::vector<shared_ptr<Commands::Command>> getCommands() override;
 
+  void train();
+  void getImagesTrain();
+  void upsampleImages();
+
  protected:
   cv::Rect findObject();
+  QPixmap getImgCrop(shared_ptr<AnnotatorLib::Annotation> annotation,
+                     int size) const;
+  cv::Mat getImg(shared_ptr<AnnotatorLib::Annotation> annotation) const;
+  void initScanner();
 
   cv::Mat frameImg;
   shared_ptr<Annotation> lastAnnotation = nullptr;
@@ -48,7 +60,12 @@ class FHOG : public Plugin {
   shared_ptr<Frame> frame = nullptr;
   shared_ptr<Frame> lastFrame = nullptr;
 
-  QPixmap getImgCrop(shared_ptr<AnnotatorLib::Annotation> annotation, int size) const;
+  dlib::array<dlib::array2d<unsigned char>> images_train;
+  std::vector<std::vector<dlib::rectangle>> boxes_train;
+
+  typedef dlib::scan_fhog_pyramid<dlib::pyramid_down<6>> image_scanner_type;
+  image_scanner_type scanner;
+  dlib::object_detector<image_scanner_type> detector;
 };
 }
 }

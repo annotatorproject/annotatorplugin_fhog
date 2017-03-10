@@ -2,6 +2,7 @@
 #define WIDGET_H
 
 #include <QWidget>
+#include <QPixmap>
 
 namespace Ui {
 class Widget;
@@ -13,6 +14,7 @@ class Widget : public QWidget {
  public:
   explicit Widget(QWidget *parent = 0);
   ~Widget();
+  void setObjectPixmap(QPixmap pixmap);
 
  private slots:
 

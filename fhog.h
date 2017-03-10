@@ -38,6 +38,7 @@ class FHOG : public Plugin {
 
  protected:
   cv::Rect findObject();
+
   cv::Mat frameImg;
   shared_ptr<Annotation> lastAnnotation = nullptr;
   shared_ptr<Object> object = nullptr;
@@ -47,6 +48,7 @@ class FHOG : public Plugin {
   shared_ptr<Frame> frame = nullptr;
   shared_ptr<Frame> lastFrame = nullptr;
 
+  QPixmap getImgCrop(shared_ptr<AnnotatorLib::Annotation> annotation, int size) const;
 };
 }
 }

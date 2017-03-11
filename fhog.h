@@ -51,12 +51,10 @@ class FHOG : public Plugin {
   cv::Mat getImg(shared_ptr<AnnotatorLib::Annotation> annotation) const;
   void initScanner();
 
-  cv::Mat frameImg;
-  shared_ptr<Annotation> lastAnnotation = nullptr;
-  shared_ptr<Object> object = nullptr;
-
   Widget widget;
 
+  cv::Mat frameImg;
+  shared_ptr<Object> object = nullptr;
   shared_ptr<Frame> frame = nullptr;
   shared_ptr<Frame> lastFrame = nullptr;
 

@@ -18,9 +18,8 @@
 #include <opencv2/imgproc/imgproc.hpp>
 
 #include <ctype.h>
-#include <iostream>
-
 #include <chrono>
+#include <iostream>
 #include <thread>
 
 using namespace Annotator::Plugins;
@@ -57,6 +56,28 @@ void FHOG::setLastAnnotation(shared_ptr<Annotation> /*annotation*/) {}
 
 std::vector<shared_ptr<Commands::Command>> FHOG::getCommands() {
   std::vector<shared_ptr<Commands::Command>> commands;
+  if (object == nullptr || frame == nullptr || lastFrame == nullptr ||
+      lastFrame == frame)
+    return commands;
+
+  try {
+    cv::Rect res = findObject();
+
+    if (res.width > 0 && res.height > 0) {
+      int x = res.x;
+      int y = res.y;
+      int w = res.width;
+      int h = res.height;
+
+      shared_ptr<Commands::NewAnnotation> nA =
+          std::make_shared<Commands::NewAnnotation>(project->getSession(),
+                                                    this->object, this->frame,
+                                                    x, y, w, h, 0.9f);
+      commands.push_back(nA);
+    }
+  } catch (std::exception &e) {
+  }
+
   return commands;
 }
 
@@ -108,6 +129,7 @@ void FHOG::getImagesTrain() {
 
   for (auto annotation : this->object->getAnnotations()) {
     std::shared_ptr<AnnotatorLib::Annotation> a = annotation.second.lock();
+    if (a->isTemporary()) continue;
     cv::Mat image =
         project->getImageSet()->getImage(a->getFrame()->getFrameNumber());
     cv::Mat imageGray;
@@ -116,9 +138,13 @@ void FHOG::getImagesTrain() {
     dlib::assign_image(dlibImageGray, dlib::cv_image<unsigned char>(imageGray));
     this->images_train.push_back(dlibImageGray);
     std::vector<dlib::rectangle> rects;
-    dlib::rectangle rect((long)a->getX(), (long)a->getY(),
-                         (long)a->getX() + (long)a->getWidth(),
-                         (long)a->getY() + long(a->getHeight()));
+    long x1 = std::max(0L, (long)a->getX());
+    long y1 = std::max(0L, (long)a->getY());
+    long x2 =
+        std::min((long)image.cols - 1L, (long)a->getX() + (long)a->getWidth());
+    long y2 =
+        std::min((long)image.rows - 1L, (long)a->getY() + long(a->getHeight()));
+    dlib::rectangle rect(x1, y1, x2, y2);
     rects.push_back(rect);
     this->boxes_train.push_back(rects);
   }
@@ -129,7 +155,18 @@ void FHOG::upsampleImages() {
                                                       boxes_train);
 }
 
-cv::Rect FHOG::findObject() { return cv::Rect(); }
+cv::Rect FHOG::findObject() {
+  cv::Mat imageGray;
+  cv::cvtColor(this->frameImg, imageGray, CV_BGR2GRAY);
+  dlib::array2d<unsigned char> dlibImageGray;
+  dlib::assign_image(dlibImageGray, dlib::cv_image<unsigned char>(imageGray));
+
+  std::vector<dlib::rectangle> dets = detector(dlibImageGray);
+  if (dets.size() < 1) return cv::Rect();
+
+  dlib::rectangle found = dets[0];
+  return cv::Rect(found.left(), found.top(), found.width(), found.height());
+}
 
 QPixmap FHOG::getImgCrop(shared_ptr<AnnotatorLib::Annotation> annotation,
                          int size) const {

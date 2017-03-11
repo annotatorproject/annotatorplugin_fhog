@@ -44,6 +44,9 @@ class FHOG : public Plugin {
   void getImagesTrain();
   void upsampleImages();
 
+  void loadSVM(std::string file);
+  void saveSVM(std::string file);
+
  protected:
   cv::Rect findObject();
   QPixmap getImgCrop(shared_ptr<AnnotatorLib::Annotation> annotation,

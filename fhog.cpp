@@ -155,6 +155,20 @@ void FHOG::upsampleImages() {
                                                       boxes_train);
 }
 
+void FHOG::loadSVM(std::string file) {
+  try {
+    dlib::deserialize(file) >> detector;
+  } catch (...) {
+  }
+}
+
+void FHOG::saveSVM(std::string file) {
+  try {
+    dlib::serialize(file) << detector;
+  } catch (...) {
+  }
+}
+
 cv::Rect FHOG::findObject() {
   cv::Mat imageGray;
   cv::cvtColor(this->frameImg, imageGray, CV_BGR2GRAY);

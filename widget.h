@@ -28,6 +28,10 @@ class Widget : public QWidget {
 
   void on_trainButton_clicked();
 
+  void on_saveButton_clicked();
+
+  void on_loadButton_clicked();
+
  private:
   Ui::Widget *ui;
   Annotator::Plugins::FHOG *fhog;
